@@ -1,3 +1,22 @@
-__pycache__
-venv
+# Виртуальное окружение
+venv/
+.venv/
+env/
+
+# Переменные окружения
 .env
+.env.local
+
+# Логи
+logs/
+*.log
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
