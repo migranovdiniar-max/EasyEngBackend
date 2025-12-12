@@ -13,7 +13,7 @@ Base.metadata.create_all(bind=engine)
 app.include_router(word_router.router)
 app.include_router(user_router.router)
 
-@app.get("/")
+@app.get("/api")
 def read_root():
     return {
         "message": "Welcome to EasyEng API"
