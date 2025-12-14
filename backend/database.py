@@ -10,6 +10,7 @@ Base = declarative_base()
 from models.user import User
 from models.word import Word
 from models.user_progress import UserProgress
+from models.quiz_result import QuizResult
 
 # Теперь подключаемся к БД
 SQLALCHEMY_DATABASE_URL = "postgresql://postgres:1234@localhost/EasyEngAPP"
