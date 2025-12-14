@@ -41,6 +41,11 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     
     await send_verification_email(user.email, token)
 
+    print("\n" + "="*50)
+    print("TOKEN FOR COPY:")
+    print(token)
+    print("="*50 + "\n")
+
     return db_user
 
 
