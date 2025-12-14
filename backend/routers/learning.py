@@ -87,6 +87,7 @@ def mark_word_known(
         )
         db.add(progress)
     else:
+        progress.known = True
         progress.interval = max(
             1, int(progress.interval * progress.ease_factor)
         )
@@ -97,4 +98,46 @@ def mark_word_known(
     return {
         "status": "success",
         "next_review_in_days": f"{progress.interval} days"
+    }
+
+
+@router.post("/unknown/{word_id}")
+def mark_word_unknown(
+    word_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    word = db.query(Word).filter(Word.id == word_id).first()
+    if not word:
+        raise HTTPException(status_code=404, detail="Word not found")
+    
+    progress = (
+        db.query(UserProgress)
+        .filter(
+            UserProgress.user_id == current_user.id, 
+            UserProgress.word_id == word_id)
+        .first())
+    
+    if not progress:
+        progress = UserProgress(
+            user_id=current_user.id,
+            word_id=word.id,
+            known=False,
+            interval=1,
+            ease_factor=2.5,
+            last_reviewed=datetime.utcnow(),
+            next_review=datetime.utcnow() + timedelta(days=1)
+        )
+        db.add(progress)
+    else:
+        progress.known = False
+        progress.interval = 1
+        progress.last_reviewed = datetime.utcnow()
+        progress.next_review = datetime.utcnow() + timedelta(days=1)
+    
+    db.commit()
+    return {
+        "status": "success",
+        "message": "Word will be reviewed again in 1 day",
+        "next_review_in_days": "1 day"
     }
