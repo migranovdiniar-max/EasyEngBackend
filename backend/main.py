@@ -5,7 +5,8 @@ from routers import (
     word as word_router, 
     auth as user_router,
     learning as learning_router,
-    dashboard as dashboard_router
+    dashboard as dashboard_router,
+    quiz as quiz_router
 )
 
 
@@ -18,6 +19,7 @@ app.include_router(word_router.router)
 app.include_router(user_router.router)
 app.include_router(learning_router.router)
 app.include_router(dashboard_router.router)
+app.include_router(quiz_router.router)
 
 @app.get("/api")
 def read_root():
