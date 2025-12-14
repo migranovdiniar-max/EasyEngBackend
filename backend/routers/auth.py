@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
+import os
+from fastapi.security import OAuth2PasswordBearer
 
-from utils.jwt import verify_verification_token
+from utils.jwt import create_verification_token, verify_access_token, verify_verification_token
 from utils.mail import send_verification_email
 from database import get_db
 from models import User
@@ -13,6 +15,8 @@ from utils.auth import (
     verify_password
 )
 
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 router = APIRouter(
     prefix="/auth", tags=["auth"]
@@ -50,9 +54,14 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
+def login(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    db_user = db.query(User).filter(User.email == username).first()
+    
+    if not db_user or not verify_password(password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -60,18 +69,12 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
         )
     
     access_token = create_access_token(
-        data={
-            "sub": db_user.email, "id": db_user.id
-        }
+        data={"sub": db_user.email, "id": db_user.id}
     )
 
     return {
         "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": db_user.id,
-            "created_at": db_user.created_at
-        }
+        "token_type": "bearer"
     }
 
 
@@ -98,3 +101,56 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     
     user.is_verified = True
     db.commit()
+
+
+@router.post("resend-verification")
+def resend_verification(
+    email: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    if user.is_verified:
+        return {
+            "message": "Email already verified"
+        }
+    
+    token = create_verification_token(user.email)
+    
+    background_tasks.add_task(
+        send_verification_email, user.email, token
+    )
+
+    dev_mode = os.getenv("DEV_MODE", "False").lower() == "True"
+
+    response = {
+        "message": "Verification email sent",
+        "token": token
+    }
+    if dev_mode:
+        response['verification_token'] = token
+        response["verify_url"] = f"http://localhost:8000/auth/verify-email?token={token}"
+    
+    return response
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    email = verify_access_token(token, credentials_exception)
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise credentials_exception
+    return user
