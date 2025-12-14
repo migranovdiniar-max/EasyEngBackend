@@ -6,7 +6,8 @@ from routers import (
     auth as user_router,
     learning as learning_router,
     dashboard as dashboard_router,
-    quiz as quiz_router
+    quiz as quiz_router,
+    stats as stats_router
 )
 
 
@@ -20,6 +21,7 @@ app.include_router(user_router.router)
 app.include_router(learning_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(quiz_router.router)
+app.include_router(stats_router.router)
 
 @app.get("/api")
 def read_root():
