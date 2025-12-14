@@ -63,7 +63,7 @@ def check_quiz_answer(
             detail="Word not found"
         )
     
-    is_correct = word.id == selected_translation
+    is_correct = word.russian == selected_translation
 
     progress = (
         db.query(UserProgress)
