@@ -107,34 +107,50 @@ export default {
 
       const url = this.isLogin ? "/api/auth/login" : "/api/auth/register";
 
+      const body = this.isLogin
+        ? { username: this.form.email, password: this.form.password }
+        : { email: this.form.email, password: this.form.password };
+
       try {
         const response = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(this.form),
+          body: JSON.stringify(body),
         });
 
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json(); // ← парсим JSON
+        } catch (err) {
+          this.error = "Сервер вернул не-JSON";
+          return;
+        }
 
         if (response.ok) {
           if (this.isLogin) {
-            // Сохраняем токен
-            localStorage.setItem("access_token", data.access_token);
-            this.success = "Успешный вход! Переходим...";
-            setTimeout(() => {
-              window.location.href = "/learn";
-            }, 1000);
+            // ✅ data есть и это объект
+            if (data.access_token) {
+              localStorage.setItem("access_token", data.access_token);
+              this.success = "Успешный вход! Переходим...";
+              setTimeout(() => {
+                window.location.href = "/learn";
+              }, 1000);
+            } else {
+              this.error = "Токен не получен";
+            }
           } else {
             this.success = "Проверьте почту и подтвердите email";
-            this.isLogin = true; // переключаем на вход
+            this.isLogin = true;
           }
         } else {
-          this.error = data.detail || "Ошибка";
+          // ✅ data.detail — ошибка от сервера
+          this.error = data.detail || "Ошибка авторизации";
         }
       } catch (err) {
-        this.error = "Ошибка сети";
+        this.error = "Ошибка сети или сервера";
+        console.error(err);
       } finally {
         this.loading = false;
       }

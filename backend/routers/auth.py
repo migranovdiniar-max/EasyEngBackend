@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 import os
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 
 from utils.jwt import create_verification_token, verify_access_token, verify_verification_token
 from utils.mail import send_verification_email
@@ -53,15 +54,19 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 @router.post("/login")
 def login(
-    username: str = Form(...),
-    password: str = Form(...),
+    request: LoginRequest,
     db: Session = Depends(get_db)
 ):
-    db_user = db.query(User).filter(User.email == username).first()
+    db_user = db.query(User).filter(User.email == request.username).first()
     
-    if not db_user or not verify_password(password, db_user.hashed_password):
+    if not db_user or not verify_password(request.password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
